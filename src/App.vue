@@ -118,7 +118,7 @@
                 {{ ticker.name }} - USD
               </dt>
               <dd class="mt-1 text-3xl font-semibold text-gray-900">
-                {{ ticker.price }}
+                {{ normilizePrice(ticker.price) }}
               </dd>
             </div>
             <div class="w-full border-t border-gray-200"></div>
@@ -200,6 +200,10 @@
 // Параллельно
 // [x] График сломан если везде одинаковые значения
 // [x] При удалении тикера остается выбор
+import {
+  subscriberToTickers,
+  unsubscriberFromTickers
+} from './api'
 
 const saveStorageData = 'criptonomicon-list'
 const PAGE_ELEMENTS = 6
@@ -253,19 +257,18 @@ export default {
     }
   },
   methods: {
-    subscribeToUpdates(ticker) {
-      const {name: tickerName} = ticker
-      setInterval(async () => {
-        const getCrpData = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=1f1324bcfbcd16172a16005b42d61405f05bdb0cbada09b2ec5d6cffdcc72948`)
-        const price = await getCrpData.json()
+    normilizePrice(price) {
+      if (!price || price === '-') {
+        return '-'
+      }
+      return price > 1 ? Number(price).toFixed(2) : Number(price).toPrecision(2)
+    },
 
-        this.tickers.find(t => t.name === tickerName).price =
-          price.USD > 1 ? price.USD.toFixed(2) : price.USD.toPrecision(2)
-
-        if (tickerName === this.selectedTicker?.name) {
-          this.graph.push(price.USD)
-        }
-      }, 3000)
+    updateTickers({ ticker: tickerName, currency: price }) {
+      const ticker = this.tickers.find(ticker => ticker.name === tickerName)
+      if (ticker) {
+        ticker.price = price
+      }
     },
 
     add() {
@@ -277,11 +280,12 @@ export default {
       this.tickers = [...this.tickers, currentTicker]
       this.filter = ''
 
-      this.subscribeToUpdates(currentTicker)
+      subscriberToTickers(currentTicker.name, this.updateTickers)
     },
 
     handleDelete(removeTiker) {
       this.tickers = this.tickers.filter((t) => t !== removeTiker)
+      unsubscriberFromTickers(removeTiker.name)
 
       if(removeTiker === this.selectedTicker) {
         this.selectedTicker = null
@@ -320,17 +324,26 @@ export default {
     }
   },
   created() {
-    const {page, filter} = Object.fromEntries(new URL(window.location).searchParams.entries())
+    const windowData = Object.fromEntries(new URL(window.location).searchParams.entries())
 
-    if (page) this.page = page
-    if (filter) this.filter = filter
+    const KEYS = ['page', 'filter']
+
+    KEYS.forEach(key => {
+      if (windowData[key]) {
+        this[key] = windowData[key]
+      }
+    })
 
     const list = window.localStorage.getItem(saveStorageData)
 
     if (list) {
       this.tickers = JSON.parse(list)
-      this.tickers.forEach(ticker => this.subscribeToUpdates(ticker))
+      this.tickers.forEach(ticker => {
+        subscriberToTickers(ticker.name, this.updateTickers)
+      })
     }
+
+    setInterval(this.updateTickers, 5000)
   }
 }
 </script>
