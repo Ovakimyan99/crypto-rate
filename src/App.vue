@@ -264,10 +264,14 @@ export default {
       return price > 1 ? Number(price).toFixed(2) : Number(price).toPrecision(2)
     },
 
-    updateTickers({ ticker: tickerName, currency: price }) {
-      const ticker = this.tickers.find(ticker => ticker.name === tickerName)
-      if (ticker) {
-        ticker.price = price
+    updateTickers(tickerName, price) {
+      const t = this.tickers.find(ticker => ticker.name === tickerName)
+      if (t) {
+        t.price = price
+      }
+
+      if (t === this.selectedTicker) {
+        this.graph.push(price)
       }
     },
 
