@@ -1,18 +1,13 @@
+import { tickersHandlers } from '@/apiSubscribe'
+
 const API_KEY = '1f1324bcfbcd16172a16005b42d61405f05bdb0cbada09b2ec5d6cffdcc72948'
-const tickersHandlers = new Map
 const socket = new WebSocket(`wss://streamer.cryptocompare.com/v2?api_key=${API_KEY}`)
 const AGGREGATE_INDEX = '5'
 
-export const subscriberToTickers = (ticker, cb) => {
-  const subscriber = tickersHandlers.get(ticker) || []
-  tickersHandlers.set(ticker, [...subscriber, cb])
-  subscribeToTickerOnWs(ticker)
-}
-
-export const unsubscriberFromTickers = (ticker) => {
-  tickersHandlers.delete(ticker)
-  unsubscribeFromTickerOnWs(ticker)
-}
+/*
+* foo -> btc "+" -> usd -> return price
+* foo -> btc "-" -> return
+*/
 
 socket.addEventListener('message', event => {
   const {
@@ -42,18 +37,16 @@ function sendToWs(objectSettings) {
   }, { once: true })
 }
 
-function subscribeToTickerOnWs(ticker) {
+export function subscribeToTickerOnWs(ticker, currency = 'USD') {
   sendToWs({
     'action': 'SubAdd',
-    'subs': [`5~CCCAGG~${ticker}~USD`]
+    'subs': [`5~CCCAGG~${ticker}~${currency}`]
   })
 }
 
-function unsubscribeFromTickerOnWs(ticker) {
+export function unsubscribeFromTickerOnWs(ticker) {
   sendToWs({
     'action': 'SubRemove',
     'subs': [`5~CCCAGG~${ticker}~USD`]
   })
 }
-
-window.tickers = tickersHandlers
